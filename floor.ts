@@ -6,7 +6,7 @@
 
 import * as Sensor from 'sensors';
 import * as Display from 'display';
-import 'lib/noise';
+import { SimplexNoise } from 'lib/noise';
 
 export class User implements Display.Vector {
   constructor(public id: number, public x: number, public y: number) {

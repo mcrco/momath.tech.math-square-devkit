@@ -6,16 +6,24 @@ Developer kit for building behaviors on the MoMath Math Square interactive floor
 
 The Math Square is an 80×80 sensor grid floor that detects people walking on it. This app runs a single visual "behavior" (mini-app) that reacts to sensor data, projected onto the floor as a 1024×1024 pixel display.
 
-## Architecture
+## Prerequisites
 
+- Node.js >= 22
+- npm (comes with Node.js)
+
+```bash
+npm install
 ```
-app.js          — Electron shell
-main.ts         — Entry point: connects sensors, loads behavior, runs render loop
-sensors.ts      — Low-level 80×80 sensor grid, sources, filtering, blobbing/tracking
-floor.ts        — High-level user tracking (sensor blobs → User objects with x,y positions)
-display.ts      — Display geometry and coordinate conversions
-behs/           — Behavior modules (your code goes here)
-```
+
+## Scripts
+
+| Command | Description |
+|---------|-------------|
+| `npm run build` | Production build (minified, no sourcemaps) |
+| `npm run dev` | Development mode (watch + Electron with DevTools) |
+| `npm run typecheck` | Run TypeScript type checking (`tsc --noEmit`) |
+| `npm run package` | Build + package with electron-forge |
+| `npm run make` | Build + make installer with electron-forge |
 
 ## Quick Start
 
@@ -31,9 +39,55 @@ This launches the app in dev mode with random sensor data. Use the sensor dropdo
 
 Check "mouse" to simulate a person with your mouse cursor.
 
+## Architecture
+
+```
+app.js          — Electron shell (CommonJS, not bundled)
+main.ts         — Entry point: connects sensors, loads behavior, runs render loop
+sensors.ts      — Low-level 80×80 sensor grid, sources, filtering, blobbing/tracking
+floor.ts        — High-level user tracking (sensor blobs → User objects with x,y positions)
+display.ts      — Display geometry and coordinate conversions
+behs/           — Behavior modules (your code goes here)
+```
+
+## Build Output
+
+The build produces the `dist/` directory:
+
+```
+dist/
+├── app.js            (Electron main process, CommonJS)
+├── main.js           (Renderer entry, ESM bundle)
+├── chunk-*.js        (Shared modules)
+├── behs/             (Behavior modules)
+├── dev.html / index.html
+├── style.css
+├── icon.png
+├── prod.json
+└── package.json      (Electron entry point config)
+```
+
 ## Writing a Behavior
 
-There are two approaches depending on what level of sensor data you need:
+Behaviors are `.js` files in the `behs/` directory. They use ESM imports with bare specifiers to access core modules:
+
+```javascript
+import * as Display from 'display';
+import * as Sensors from 'sensors';
+import Floor from 'floor';
+```
+
+Each behavior exports a `behavior` object:
+
+```javascript
+export const behavior = {
+  title: "My Behavior",
+  frameRate: 'animate',
+  init: function(container) { /* set up rendering */ },
+  render: function(floor) { /* called each frame */ }
+};
+export default behavior;
+```
 
 ### Blobbed Users (high-level)
 
@@ -44,10 +98,11 @@ import * as Display from 'display';
 
 export const behavior = {
   title: "My Behavior",
-  frameRate: 'animate',    // 'animate' | 'sensors' | number (fps)
-  init: function(container) { /* set up your canvas/rendering here */ },
+  frameRate: 'animate',
+  init: function(container) {
+    // Set up your canvas/rendering here
+  },
   render: function(floor) {
-    // floor.users is an array of tracked people
     for (let user of floor.users) {
       // user.x, user.y — pixel position (0–1024)
       // user.id — unique tracking ID
@@ -59,7 +114,7 @@ export default behavior;
 
 ### Raw Sensor Grid (low-level)
 
-Use this when you want direct access to the 80×80 grid of activated cells. See `behs/simple-sensors.js`.
+Use this when you want direct access to the 80×80 grid. See `behs/simple-sensors.js`.
 
 ```javascript
 import * as Display from 'display';
@@ -69,9 +124,10 @@ export const behavior = {
   title: "My Sensor Behavior",
   frameRate: 'sensors',
   maxUsers: 0,             // disables blobbing — raw grid only
-  init: function(container) { /* set up your canvas/rendering here */ },
+  init: function(container) {
+    // Set up your canvas/rendering here
+  },
   render: function(floor) {
-    // floor.sensors.data is a flat Uint8Array of 80*80 = 6400 values (0 or 1)
     for (let y = 0; y < Sensors.height; y++) {
       for (let x = 0; x < Sensors.width; x++) {
         const active = floor.sensors.data[y * Sensors.width + x];
@@ -81,14 +137,6 @@ export const behavior = {
   }
 };
 export default behavior;
-```
-
-### Choosing Your Behavior
-
-In `main.ts`, change the import string to point to your behavior file:
-
-```typescript
-System.import("behs/simple-blobs")   // or "behs/simple-sensors", "behs/my-behavior", etc.
 ```
 
 ### Behavior Options
@@ -102,19 +150,29 @@ System.import("behs/simple-blobs")   // or "behs/simple-sensors", "behs/my-behav
 | `init(container)` | Set up rendering inside the provided div. May return a Promise. |
 | `render(floor)` | Called each frame. Access `floor.users` or `floor.sensors` depending on mode. |
 
-## Production
+## Production Launching / Switching
 
-```bash
-npm start         # Run via Electron Forge
-npm run package   # Package for distribution
-npm run make      # Create installer
+In production, the BLAST app (BrightLogic) schedules and controls behaviors on the Math Square floor.
+
+BLAST launches the app with a semaphore GUID. The app signals readiness by calling back to BLAST once the first frame renders:
+
 ```
-
-### BLAST Integration
+BLAST_URL:9090/?semaphore=<semaphoreguid>
+```
 
 The app accepts semaphore parameters for launcher integration:
 ```
 math-square.exe -semaphoreguid=XXXX -semaphoreurl=http://...
+```
+
+**For development/hackathon use, you don't need BLAST. Just run `npm run dev` and place the window on the floor display.**
+
+## Production
+
+```bash
+npm run build       # Build optimized bundle
+npm run package     # Package for distribution
+npm run make        # Create installer
 ```
 
 ## Network

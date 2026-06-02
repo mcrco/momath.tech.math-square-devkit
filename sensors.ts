@@ -18,7 +18,7 @@ export interface Vector {
 export class Coord implements Vector {
   x: number
   y: number
-  o: number
+  o!: number
 
   constructor();
   constructor(p: Coord);
@@ -134,11 +134,13 @@ function disc(d: number): Coord[] {
 
 /* A two-dimensional WxH array of values, indexable by Index, implemented by a TypedArray */
 abstract class TypedGrid {
-  protected readonly constr: TypedArrayConstructor
-  readonly data: TypedArray
+  protected abstract get constr(): TypedArrayConstructor
+  readonly data!: TypedArray
 
   constructor(grid?: TypedGrid) {
-    this.data = grid ? new this.constr(grid.data) : new this.constr(N);
+    // Subclass getter is available at runtime via prototype chain
+    const Ctor = (this as unknown as { constr: TypedArrayConstructor }).constr;
+    (this as any).data = grid ? new Ctor(grid.data) : new Ctor(N);
   }
 
   /* Get the value at index (or undefined if out of range) */
@@ -285,8 +287,8 @@ export class BLSource extends ByteGrid implements Source {
     super();
   }
 
-  read() {
-    return new Promise((resolve, reject) => {
+  read(): Promise<this> {
+    return new Promise<this>((resolve, reject) => {
       const q = new XMLHttpRequest();
       q.addEventListener("loadend", () => {
         if (q.readyState != 4 || q.status != 200)
@@ -322,8 +324,8 @@ export class BLSource extends ByteGrid implements Source {
       try {
         q.open("GET", this.url);
         q.send();
-      } catch (e) {
-        return reject("GET " + this.url + ": " + e.toString());
+      } catch (e: unknown) {
+        return reject("GET " + this.url + ": " + String(e));
       }
     });
   }

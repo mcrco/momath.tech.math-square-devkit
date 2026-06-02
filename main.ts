@@ -1,10 +1,9 @@
 /* MoMath Math Square — Main Entry Point
  * Initializes sensors, floor tracking, and the behavior render loop.
- * Called from the page's onload handler.
+ * Self-initializes when loaded as an ESM module (no onload handler needed).
  */
 
 import * as Sensor from 'sensors';
-import * as Display from 'display';
 import Floor from 'floor';
 import {blserver} from 'prod';
 
@@ -41,7 +40,7 @@ async function sendSemaphoreCallback() {
 /* ─── Query Parameters ─── */
 
 export const params: {[key: string]: string | null} = {};
-location.search.substr(1).split('&').forEach((arg) => {
+location.search.substring(1).split('&').forEach((arg) => {
   const kv = arg.split('=', 2);
   params[kv[0]] = kv.length === 2 ? decodeURIComponent(kv[1].replace(/\+/g, ' ')) : null;
 });
@@ -60,18 +59,23 @@ if (params.launcher_callback_url) {
 
 /* ─── Electron Integration (optional) ─── */
 
-var electron: any;
-var app: any;
-System.import("electron").then((mod) => {
-  if (!mod) return;
-  electron = mod;
-  app = mod.remote.getGlobal('app');
+let electron: any = null;
+let app: any = null;
 
-  window.addEventListener('contextmenu', (e) => {
-    e.preventDefault();
-    app.menu.popup(electron.remote.getCurrentWindow());
-  }, false);
-}, () => { /* no electron */ });
+try {
+  const mod: any = await import('electron');
+  if (mod) {
+    electron = mod;
+    app = mod.remote.getGlobal('app');
+
+    window.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      app.menu.popup(electron.remote.getCurrentWindow());
+    }, false);
+  }
+} catch {
+  /* no electron — running in plain browser or electron not available */
+}
 
 function fatal(msg: any) {
   console.error('[fatal]', msg);
@@ -138,43 +142,6 @@ if (form && DEV) {
 
 /* ─── Behavior Loading ─── */
 
-System.import("behs/simple-blobs").then((beh: any) => {
-  const prog = beh.default || beh.behavior;
-  if (!prog) {
-    console.error('[main] Invalid behavior module');
-    return;
-  }
-
-  console.log('[main] Loaded behavior:', prog.title);
-  document.title = "Math Square: " + prog.title;
-
-  // Configure floor tracking
-  floor.maxUsers = prog.maxUsers === undefined ? 40 : prog.maxUsers;
-  floor.setGhosts(prog.numGhosts, prog.ghostBounds, prog.ghostRate);
-  if (prog.userUpdate) floor.userUpdate = prog.userUpdate;
-
-  // Initialize the behavior
-  try {
-    const initResult = prog.init(scene);
-    const startRendering = () => {
-      sendSemaphoreCallback();
-      if (prog.maxUsers !== null) floor.connect();
-      setupRenderLoop(prog);
-    };
-
-    if (initResult && typeof initResult.then === 'function') {
-      initResult.then(startRendering).catch((e: any) => fatal(e));
-    } else {
-      startRendering();
-    }
-  } catch (e) {
-    fatal(e);
-  }
-}, (err: any) => {
-  console.error('[main] Failed to load behavior:', err);
-  fatal(err);
-});
-
 function setupRenderLoop(prog: any) {
   if (!prog.render || !prog.frameRate) return;
 
@@ -199,4 +166,37 @@ function setupRenderLoop(prog: any) {
         setInterval(renderFn, 1000 / prog.frameRate);
       }
   }
+}
+
+try {
+  const beh = await import('./behs/simple-sensors.js');
+  const prog = beh.default || beh.behavior;
+  if (!prog) {
+    console.error('[main] Invalid behavior module');
+  } else {
+    console.log('[main] Loaded behavior:', prog.title);
+    document.title = "Math Square: " + prog.title;
+
+    // Configure floor tracking
+    floor.maxUsers = prog.maxUsers === undefined ? 40 : prog.maxUsers;
+    floor.setGhosts(prog.numGhosts, prog.ghostBounds, prog.ghostRate);
+    if (prog.userUpdate) floor.userUpdate = prog.userUpdate;
+
+    // Initialize the behavior
+    const initResult = prog.init(scene);
+    const startRendering = () => {
+      sendSemaphoreCallback();
+      if (prog.maxUsers !== null) floor.connect();
+      setupRenderLoop(prog);
+    };
+
+    if (initResult && typeof initResult.then === 'function') {
+      initResult.then(startRendering).catch((e: any) => fatal(e));
+    } else {
+      startRendering();
+    }
+  }
+} catch (err: any) {
+  console.error('[main] Failed to load behavior:', err);
+  fatal(err);
 }

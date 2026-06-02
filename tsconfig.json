@@ -1,20 +1,21 @@
 {
   "compilerOptions": {
-    "module": "es2015",
-    "target": "es2015",
-    "noImplicitAny": true,
-    "noImplicitThis": true,
-    "sourceMap": true,
-    "alwaysStrict": true,
-    "strictNullChecks": true
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "target": "ES2020",
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "paths": {
+      "sensors": ["./sensors.ts"],
+      "display": ["./display.ts"],
+      "floor": ["./floor.ts"],
+      "prod": ["./prod.json"],
+      "lib/noise": ["./lib/noise.d.ts"]
+    }
   },
-  "include": [
-    "types/*"
-  ],
-  "files": [
-    "main.ts",
-    "sensors.ts",
-    "display.ts",
-    "floor.ts"
-  ]
+  "include": ["*.ts", "behs/**/*.js", "lib/**/*.js", "types/**/*.d.ts"]
 }

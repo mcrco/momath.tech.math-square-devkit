@@ -1,13 +1,9 @@
 # Dependencies
 node_modules/
-packages/
 
 # Build output
-out/
+dist/
 *.map
-
-# Reference files (not needed for dev kit)
-for-reference/
 
 # OS
 .DS_Store

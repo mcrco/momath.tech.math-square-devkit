@@ -1,1 +1,1 @@
-declare const SimplexNoise: any;
+export declare const SimplexNoise: any;
