@@ -1,0 +1,44 @@
+{
+  "name": "momath-devkit-mathsquare",
+  "version": "1.0.0",
+  "description": "MoMath Math Square Developer Kit — single behavior Electron app for the interactive floor",
+  "main": "app.js",
+  "dependencies": {
+    "electron-log": "^2.2.7",
+    "jspm": "^0.16.53"
+  },
+  "devDependencies": {
+    "@electron-forge/cli": "^7.4.0",
+    "@electron-forge/maker-squirrel": "^7.4.0",
+    "@electron-forge/maker-zip": "^7.4.0",
+    "@electron-forge/plugin-auto-unpack-natives": "^7.4.0",
+    "@electron-forge/plugin-fuses": "^7.4.0",
+    "@electron/fuses": "^1.8.0",
+    "electron": "^31.3.1",
+    "typescript": "^2.4.2"
+  },
+  "scripts": {
+    "start": "electron-forge start",
+    "dev": "electron . --dev",
+    "package": "electron-forge package",
+    "make": "electron-forge make"
+  },
+  "repository": {
+    "type": "git",
+    "url": "gitlab.com/momath/math-square"
+  },
+  "author": "MoMath",
+  "license": "MIT",
+  "jspm": {
+    "directories": {
+      "packages": "packages"
+    },
+    "dependencies": {
+      "ts": "github:frankwallis/plugin-typescript@^7.0.6"
+    },
+    "devDependencies": {
+      "ts-runtime": "npm:babel-runtime@^5.8.24",
+      "typescript": "npm:typescript@^2.0.7"
+    }
+  }
+}
