@@ -67,6 +67,31 @@ dist/
 └── package.json      (Electron entry point config)
 ```
 
+## Sample Behaviors
+
+The project ships with two example behaviors in `behs/`:
+
+| File | Title | What it does |
+|------|-------|-------------|
+| `simple-blobs.js` | Simple Blobs | Draws each tracked user as a colored circle. Demonstrates high-level blobbed user tracking. |
+| `simple-sensors.js` | Simple Sensors | Renders the raw 80×80 sensor grid directly — green rectangles for active cells. No blobbing. |
+
+### Switching behaviors
+
+The app currently loads a single behavior hardcoded in `main.ts`:
+
+```typescript
+const beh = await import('./behs/simple-sensors.js');
+```
+
+To switch, change the import path to a different behavior file:
+
+```typescript
+const beh = await import('./behs/simple-blobs.js');
+```
+
+Save the file, and esbuild will rebuild automatically (in dev mode). The Electron window reloads with the new behavior.
+
 ## Writing a Behavior
 
 Behaviors are `.js` files in the `behs/` directory. They use ESM imports with bare specifiers to access core modules:

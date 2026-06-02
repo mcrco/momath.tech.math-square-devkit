@@ -4,9 +4,7 @@
  *  Description: Minimal example of blobbed user tracking with pure Canvas2D.
  *               Each user is drawn as a colored circle. No frameworks needed.
  *    Framework: Canvas2D (native)
- *       Author: Example
- *       Status: works
- */
+*/
 
 import * as Display from 'display';
 

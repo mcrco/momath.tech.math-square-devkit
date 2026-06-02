@@ -5,8 +5,6 @@
  *               Each active sensor cell is drawn as a colored rectangle.
  *               No blobbing — shows the raw 80x80 grid data directly.
  *    Framework: Canvas2D (native)
- *       Author: Example
- *       Status: works
  */
 
 import * as Display from 'display';
