@@ -33,21 +33,74 @@ Check "mouse" to simulate a person with your mouse cursor.
 
 ## Writing a Behavior
 
-See `behs/simple-blobs.js` for a minimal example. A behavior exports:
+There are two approaches depending on what level of sensor data you need:
+
+### Blobbed Users (high-level)
+
+Use this when you want tracked user positions. See `behs/simple-blobs.js`.
 
 ```javascript
+import * as Display from 'display';
+
 export const behavior = {
   title: "My Behavior",
   frameRate: 'animate',    // 'animate' | 'sensors' | number (fps)
   init: function(container) { /* set up your canvas/rendering here */ },
-  render: function(floor) { /* called each frame with floor.users array */ }
+  render: function(floor) {
+    // floor.users is an array of tracked people
+    for (let user of floor.users) {
+      // user.x, user.y — pixel position (0–1024)
+      // user.id — unique tracking ID
+    }
+  }
 };
 export default behavior;
 ```
 
-Each user in `floor.users` has:
-- `x`, `y` — pixel position (0–1024)
-- `id` — unique tracking ID (for color assignment, etc.)
+### Raw Sensor Grid (low-level)
+
+Use this when you want direct access to the 80×80 grid of activated cells. See `behs/simple-sensors.js`.
+
+```javascript
+import * as Display from 'display';
+import * as Sensors from 'sensors';
+
+export const behavior = {
+  title: "My Sensor Behavior",
+  frameRate: 'sensors',
+  maxUsers: 0,             // disables blobbing — raw grid only
+  init: function(container) { /* set up your canvas/rendering here */ },
+  render: function(floor) {
+    // floor.sensors.data is a flat Uint8Array of 80*80 = 6400 values (0 or 1)
+    for (let y = 0; y < Sensors.height; y++) {
+      for (let x = 0; x < Sensors.width; x++) {
+        const active = floor.sensors.data[y * Sensors.width + x];
+        // active is 1 if that cell is triggered, 0 otherwise
+      }
+    }
+  }
+};
+export default behavior;
+```
+
+### Choosing Your Behavior
+
+In `main.ts`, change the import string to point to your behavior file:
+
+```typescript
+System.import("behs/simple-blobs")   // or "behs/simple-sensors", "behs/my-behavior", etc.
+```
+
+### Behavior Options
+
+| Property | Description |
+|----------|-------------|
+| `title` | Display name |
+| `frameRate` | `'animate'` (60fps), `'sensors'` (on sensor update), or a number (custom fps) |
+| `maxUsers` | Max tracked users (default 40). Set to `0` for raw sensors only, `null` to disable sensors entirely |
+| `numGhosts` | Number of fake users for testing (move via simplex noise) |
+| `init(container)` | Set up rendering inside the provided div. May return a Promise. |
+| `render(floor)` | Called each frame. Access `floor.users` or `floor.sensors` depending on mode. |
 
 ## Production
 
