@@ -1,4 +1,5 @@
 /* MoMath Math Square Display interface
+ * © 2025 National Museum of Mathematics. All rights reserved.
  * Provides a description of the display, defined by an HTMLDivElement of the
  * given dimentions, and common utilities for rendering interfaces.
  */

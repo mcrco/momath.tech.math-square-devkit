@@ -1,4 +1,5 @@
 /* MoMath Math Square Behavior
+ * © 2025 National Museum of Mathematics. All rights reserved.
  *
  *        Title: Simple Sensors
  *  Description: Minimal example of raw sensor grid rendering with pure Canvas2D.

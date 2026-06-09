@@ -1,3 +1,4 @@
+// © 2025 National Museum of Mathematics. All rights reserved.
 const electron = require('electron');
 const path = require('path');
 const url = require('url');

@@ -1,3 +1,4 @@
+// © 2025 National Museum of Mathematics. All rights reserved.
 import * as esbuild from 'esbuild';
 import { spawn } from 'node:child_process';
 import { readdirSync, readFileSync, writeFileSync, mkdirSync, copyFileSync, existsSync } from 'node:fs';

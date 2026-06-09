@@ -31,7 +31,9 @@
   },
   "repository": {
     "type": "git",
-    "url": "gitlab.com/momath/math-square"
+    "url": "https://github.com/MoMath1/MoMath.DevKit.MathSquare"
   },
-  "author": "MoMath"
+  "author": "MoMath",
+  "license": "UNLICENSED",
+  "private": true
 }
