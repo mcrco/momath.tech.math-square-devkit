@@ -199,7 +199,7 @@ abstract class TypedGrid {
 
 type GridDiff = number[]|number|null
 
-class ByteGrid extends TypedGrid {
+export class ByteGrid extends TypedGrid {
   protected get constr() {
     return Uint8ClampedArray;
   }
@@ -633,4 +633,298 @@ export class Blobber {
     this.track(r);
     return r;
   }
+}
+
+/**
+ * AFR Playback Source — reads BrightLogic .afr recording files and replays them
+ * through the Source interface. Uses streaming file access: builds an index of
+ * frame byte offsets on init(), then decodes frames on demand via Blob.slice().
+ *
+ * ── AFR File Format ──────────────────────────────────────────────────────────
+ * The .afr file is XML with the following structure:
+ *
+ *   <BLFloor>
+ *     <Sensors>
+ *       <Width>80</Width>
+ *       <Height>80</Height>
+ *     </Sensors>
+ *     <Recording starttime="...">
+ *       <Frames>
+ *         <Frame timestamp="0.001">BASE64_DATA</Frame>
+ *         <Frame timestamp="0.026">BASE64_DATA</Frame>
+ *         ...
+ *       </Frames>
+ *     </Recording>
+ *   </BLFloor>
+ *
+ * Each <Frame> contains a base64-encoded packed bitmap:
+ *   - 800 bytes = 6400 bits = 80×80 sensor cells
+ *   - Each bit: 1 = sensor activated (foot present), 0 = not activated
+ *   - Layout: row-major order (row 0 first, left to right)
+ *   - Timestamps are seconds elapsed since recording start
+ *
+ * ── Bit Order: MSB-first ─────────────────────────────────────────────────────
+ * For byte at position b, bits are unpacked most-significant-bit first:
+ *   bit 7 → sensor index b*8 + 0
+ *   bit 6 → sensor index b*8 + 1
+ *   ...
+ *   bit 0 → sensor index b*8 + 7
+ *
+ * This matches the BrightLogic ActiveFloor format specification. If visual
+ * verification reveals horizontal mirroring, switch to LSB-first ordering.
+ * If vertical mirroring, reverse row iteration order. See inline comments
+ * in read() for the alternative unpacking code.
+ *
+ * ── Memory Characteristics (50MB+ files) ─────────────────────────────────────
+ * - init() reads the file as text once to build the frame index, then the text
+ *   string goes out of scope and is garbage-collected (transient peak ~file size).
+ * - frameIndex stores only { timestamp, offset, length } per frame (~20 bytes/entry).
+ *   A 50MB file with ~45,000 frames uses ~900KB for the index.
+ * - read() uses File.slice(offset, length) to decode one frame at a time (~1KB/read).
+ *   The File object is a browser handle to the on-disk file, not an in-memory copy.
+ * - Steady-state RSS during playback should stay well under 200MB for typical recordings.
+ * - If init() memory spike is problematic, a chunked-scan optimization can replace the
+ *   full-text read without changing the public API (see design.md for details).
+ */
+export class AFRPlaybackSource extends ByteGrid implements Source {
+  private file: File
+  public frameIndex: Array<{ timestamp: number; offset: number; length: number }> = []
+  private index: number = 0
+  private _stopped: boolean = false
+  public sensorWidth: number = 0
+  public sensorHeight: number = 0
+
+  constructor(file: File) {
+    super()
+    this.file = file
+  }
+
+  async init(): Promise<void> {
+    const text = await this.file.text()
+
+    // Parse header via DOMParser to extract sensor dimensions
+    const parser = new DOMParser()
+    const doc = parser.parseFromString(text, 'text/xml')
+
+    // Check for XML parse errors
+    const parseError = doc.querySelector('parsererror')
+    if (parseError) {
+      throw "AFRPlaybackSource: invalid XML"
+    }
+
+    const root = doc.documentElement
+    if (!root || root.tagName !== 'BLFloor') {
+      throw "AFRPlaybackSource: missing BLFloor element"
+    }
+
+    // Extract sensor dimensions from <Sensors><Width> and <Sensors><Height>
+    const sensorsEl = root.querySelector('Sensors')
+    const widthEl = sensorsEl?.querySelector('Width')
+    const heightEl = sensorsEl?.querySelector('Height')
+
+    if (!widthEl || !heightEl) {
+      throw "AFRPlaybackSource: missing Sensors dimensions"
+    }
+
+    this.sensorWidth = parseInt(widthEl.textContent || '', 10)
+    this.sensorHeight = parseInt(heightEl.textContent || '', 10)
+
+    if (isNaN(this.sensorWidth) || isNaN(this.sensorHeight)) {
+      throw "AFRPlaybackSource: missing Sensors dimensions"
+    }
+
+    if (this.sensorWidth !== W || this.sensorHeight !== H) {
+      throw `AFRPlaybackSource: sensor size mismatch (got ${this.sensorWidth}x${this.sensorHeight}, expected 80x80)`
+    }
+
+    // Scan text for <Frame timestamp="..."> boundaries to build frameIndex
+    // Each entry stores the character offset and length of the base64 content between <Frame ...> and </Frame>
+    const frameOpenRegex = /<Frame\s+timestamp="([^"]+)">/g
+    const frameCloseTag = '</Frame>'
+    let match: RegExpExecArray | null
+
+    while ((match = frameOpenRegex.exec(text)) !== null) {
+      const timestamp = parseFloat(match[1])
+      const contentStart = match.index + match[0].length
+      const closeIndex = text.indexOf(frameCloseTag, contentStart)
+      if (closeIndex === -1) break
+      const contentLength = closeIndex - contentStart
+      this.frameIndex.push({
+        timestamp,
+        offset: contentStart,
+        length: contentLength
+      })
+    }
+
+    if (this.frameIndex.length === 0) {
+      throw "AFRPlaybackSource: no frames in recording"
+    }
+  }
+
+  read(): Promise<Grid> {
+    if (this._stopped) {
+      return Promise.reject("AFRPlaybackSource: stopped")
+    }
+
+    const frame = this.frameIndex[this.index]
+
+    // Slice the file blob at the stored offset/length, read as text
+    const blob = this.file.slice(frame.offset, frame.offset + frame.length)
+    return blob.text().then((rawText) => {
+      // Strip whitespace from the base64 content
+      const base64 = rawText.replace(/\s/g, '')
+
+      // Base64 decode
+      const raw = atob(base64)
+
+      // Validate byte count: expect exactly 800 bytes for 80x80 grid
+      const expectedBytes = (this.sensorWidth * this.sensorHeight) / 8
+      if (raw.length !== expectedBytes) {
+        console.warn(`AFRPlaybackSource: frame ${this.index} decoded to ${raw.length} bytes, expected ${expectedBytes} — skipping`)
+        // Advance index, wrapping if needed
+        this.index++
+        if (this.index >= this.frameIndex.length) {
+          this.index = 0
+          this.clear()
+          document.dispatchEvent(new CustomEvent("playbackDone"))
+        }
+        // Try the next frame recursively
+        return this.read()
+      }
+
+      // Bit order: MSB-first (confirmed by BrightLogic AFR format spec).
+      // Each byte's MSB maps to the lowest sensor index for that byte.
+      // If visual verification shows horizontal mirroring, switch to LSB-first:
+      //   this.data[b * 8 + bit] = (byte >> bit) & 1  (bit from 0 to 7)
+      // If vertical mirroring, reverse row iteration:
+      //   read rows from bottom (byte 790) to top (byte 0) instead.
+      for (let b = 0; b < raw.length; b++) {
+        const byte = raw.charCodeAt(b)
+        for (let bit = 7; bit >= 0; bit--) {
+          this.data[b * 8 + (7 - bit)] = (byte >> bit) & 1
+        }
+      }
+
+      // Advance index
+      this.index++
+      if (this.index >= this.frameIndex.length) {
+        // Wrap to beginning (looping playback)
+        this.index = 0
+        document.dispatchEvent(new CustomEvent("playbackDone"))
+      }
+
+      return Promise.resolve(this as Grid)
+    })
+  }
+
+  get remaining(): number {
+    return this.frameIndex.length - this.index
+  }
+
+  get nextTimestamp(): number | undefined {
+    return this.frameIndex[this.index]?.timestamp
+  }
+
+  get stopped(): boolean {
+    return this._stopped
+  }
+
+  reset(): void {
+    this.index = 0
+    this.clear()
+  }
+
+  stop(): void {
+    this._stopped = true
+  }
+}
+
+/* Drive AFR playback using embedded frame timestamps.
+ * Delivers frames to the handler at their original recorded timing.
+ * Loops automatically when the recording ends (resets on playbackDone event).
+ * Stops when handler returns 0, source.stopped is true, or a read error occurs and handler returns 0. */
+export function runAFRPlayback(
+  source: AFRPlaybackSource,
+  handler: (result: Grid | string) => number
+): void {
+  let startTime = performance.now()
+  let firstTimestamp = source.frameIndex[0].timestamp
+
+  const onPlaybackDone = () => {
+    // Reset wall-clock reference for the next loop pass
+    startTime = performance.now()
+    firstTimestamp = source.frameIndex[0].timestamp
+  }
+
+  document.addEventListener("playbackDone", onPlaybackDone)
+
+  const tick = () => {
+    if (source.stopped) {
+      document.removeEventListener("playbackDone", onPlaybackDone)
+      return
+    }
+
+    const elapsed = (performance.now() - startTime) / 1000
+
+    // Deliver all frames whose relative timestamp <= elapsed
+    const deliverNext = (): void => {
+      if (source.stopped) {
+        document.removeEventListener("playbackDone", onPlaybackDone)
+        return
+      }
+
+      const nextTs = source.nextTimestamp
+      if (nextTs === undefined) {
+        // No more frames available right now; wait for playbackDone reset
+        return
+      }
+
+      if ((nextTs - firstTimestamp) <= elapsed) {
+        source.read().then((grid) => {
+          const wait = handler(grid)
+          if (wait === 0) {
+            document.removeEventListener("playbackDone", onPlaybackDone)
+            return
+          }
+          // Continue delivering frames that are due
+          deliverNext()
+        }, (err) => {
+          const wait = handler("Sensors.read: " + err)
+          if (wait === 0) {
+            document.removeEventListener("playbackDone", onPlaybackDone)
+            return
+          }
+          // Schedule next tick even after error
+          scheduleNext()
+        })
+      } else {
+        // All due frames delivered, schedule next tick
+        scheduleNext()
+      }
+    }
+
+    deliverNext()
+  }
+
+  const scheduleNext = () => {
+    if (source.stopped) {
+      document.removeEventListener("playbackDone", onPlaybackDone)
+      return
+    }
+
+    const nextTs = source.nextTimestamp
+    if (nextTs === undefined) {
+      // Source wrapped or exhausted; next tick will pick up after playbackDone resets timing
+      return
+    }
+
+    const now = performance.now()
+    const elapsedNow = (now - startTime) / 1000
+    const delta = (nextTs - firstTimestamp) - elapsedNow
+    const delayMs = Math.max(0, delta * 1000)
+    setTimeout(tick, delayMs)
+  }
+
+  // Start the first tick immediately
+  tick()
 }

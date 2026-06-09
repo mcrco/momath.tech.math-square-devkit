@@ -33,6 +33,5 @@
     "type": "git",
     "url": "gitlab.com/momath/math-square"
   },
-  "author": "MoMath",
-  "license": "MIT"
+  "author": "MoMath"
 }

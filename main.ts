@@ -118,20 +118,106 @@ const form = <HTMLFormElement | null>document.getElementById('form');
 if (form && DEV) {
   const sensorInput = <HTMLSelectElement | null>form.elements.namedItem('sensors');
   const mouseCheckBox = <HTMLInputElement | null>form.elements.namedItem('mouseCheckBox');
+  const afrFileInput = <HTMLInputElement | null>document.getElementById('afrFileInput');
 
   if (sensorInput) {
     sensorInput.value = params.sensors || 'raindrop';
     const mouseSource = new Sensor.MouseSource(scene);
 
+    // Track previous sensor value for reverting on file dialog cancel
+    let previousSensorValue: string = sensorInput.value;
+    // Track active AFR source so we can stop it when switching away
+    let activeAFRSource: Sensor.AFRPlaybackSource | null = null;
+
+    const stopActiveAFR = () => {
+      if (activeAFRSource) {
+        activeAFRSource.stop();
+        activeAFRSource = null;
+      }
+    };
+
     const updateSource = () => {
-      const source = createSensorSource(sensorInput.value);
-      if (mouseCheckBox && mouseCheckBox.checked) {
-        mouseSource.source = source;
-        mouseSource.start();
-        floor.source = mouseSource;
+      // Stop any active AFR playback when switching away
+      if (sensorInput.value !== 'afr') {
+        stopActiveAFR();
+      }
+
+      if (sensorInput.value === 'afr') {
+        if (!afrFileInput) return;
+
+        // Trigger the hidden file input
+        afrFileInput.click();
+
+        // Use a one-time change listener to detect file selection
+        const onFileChange = async () => {
+          afrFileInput.removeEventListener('change', onFileChange);
+          window.removeEventListener('focus', onFocusCancel);
+
+          const file = afrFileInput.files && afrFileInput.files[0];
+          if (!file) {
+            // No file selected — revert dropdown
+            sensorInput.value = previousSensorValue;
+            return;
+          }
+
+          // Reset the file input so the same file can be re-selected
+          afrFileInput.value = '';
+
+          try {
+            // Stop any previously active AFR source
+            stopActiveAFR();
+
+            const afrSource = new Sensor.AFRPlaybackSource(file);
+            await afrSource.init();
+            floor.source = afrSource;
+            activeAFRSource = afrSource;
+            previousSensorValue = 'afr';
+
+            // Drive playback using embedded timestamps
+            Sensor.runAFRPlayback(afrSource, (result) => {
+              if (typeof result === 'string') {
+                floor.errCallback(result);
+              }
+              return 1; // continue playback
+            });
+          } catch (err: any) {
+            floor.errCallback(String(err));
+            // Revert dropdown on error
+            sensorInput.value = previousSensorValue;
+          }
+        };
+
+        // Detect file dialog cancel via window focus
+        // When the file dialog closes without selection, focus returns to the window
+        const onFocusCancel = () => {
+          // Small delay to allow the change event to fire first if a file was selected
+          setTimeout(() => {
+            // If the change event already fired, this listener was removed
+            // If still attached, no file was selected (cancel)
+            afrFileInput.removeEventListener('change', onFileChange);
+            window.removeEventListener('focus', onFocusCancel);
+
+            if (!afrFileInput.files || afrFileInput.files.length === 0) {
+              sensorInput.value = previousSensorValue;
+            }
+          }, 300);
+        };
+
+        afrFileInput.addEventListener('change', onFileChange);
+        window.addEventListener('focus', onFocusCancel, { once: true });
+
       } else {
-        mouseSource.stop();
-        floor.source = source;
+        // Existing source handling for bl, null, raindrop
+        previousSensorValue = sensorInput.value;
+        const source = createSensorSource(sensorInput.value);
+        if (mouseCheckBox && mouseCheckBox.checked) {
+          mouseSource.source = source;
+          mouseSource.start();
+          floor.source = mouseSource;
+        } else {
+          mouseSource.stop();
+          floor.source = source;
+        }
       }
     };
 

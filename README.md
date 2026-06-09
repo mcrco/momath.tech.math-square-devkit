@@ -35,9 +35,16 @@ npm run dev
 This launches the app in dev mode with random sensor data. Use the sensor dropdown to switch between:
 - **Random** — simulated random noise
 - **Server** — real BL floor sensor server (192.168.72.11:9000)
+- **AFR Recording** — play back a `.afr` recording file with real foot traffic
 - **Off** — no sensor input
 
 Check "mouse" to simulate a person with your mouse cursor.
+
+### AFR Playback
+
+Select "AFR Recording" from the sensor dropdown to load a BrightLogic `.afr` recording file. This replays recorded foot traffic at its original speed using embedded timestamps, and loops continuously. All behaviors work identically to running against the live floor — blobbing, filtering, and display are unaffected.
+
+AFR files can be large (50MB+). The player uses streaming access (frame index + on-demand `Blob.slice()`) so memory stays reasonable during playback.
 
 ## Architecture
 
@@ -45,9 +52,11 @@ Check "mouse" to simulate a person with your mouse cursor.
 app.js          — Electron shell (CommonJS, not bundled)
 main.ts         — Entry point: connects sensors, loads behavior, runs render loop
 sensors.ts      — Low-level 80×80 sensor grid, sources, filtering, blobbing/tracking
+                  Includes AFRPlaybackSource and runAFRPlayback() for .afr file playback
 floor.ts        — High-level user tracking (sensor blobs → User objects with x,y positions)
 display.ts      — Display geometry and coordinate conversions
 behs/           — Behavior modules (your code goes here)
+documentation/  — AFR format spec, sample recordings, reference materials
 ```
 
 ## Build Output

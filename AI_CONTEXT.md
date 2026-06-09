@@ -6,7 +6,7 @@ This repository is a developer kit for building interactive **behaviors** for th
 
 Math Square is an interactive floor with an 80×80 sensor grid that detects people walking on it, and a 1024×1024 projected display that renders a single behavior reacting to those sensors.
 
-The app is an Electron-based developer kit. In development mode, it can use random simulated sensor data, a real floor sensor server, or no sensor input, and it also supports mouse-based person simulation for testing.
+The app is an Electron-based developer kit. In development mode, it can use random simulated sensor data, a real floor sensor server, AFR recording playback (`.afr` files with real foot traffic), or no sensor input, and it also supports mouse-based person simulation for testing.
 
 ## Main idea for hackathon participants
 
@@ -21,9 +21,11 @@ For hackathon speed, prefer modifying or copying an existing sample behavior ins
 | `README.md` | Project overview, setup, scripts, behavior contract, and examples. |
 | `behs/simple-blobs.js` | Example using tracked users via `floor.users`. |
 | `behs/simple-sensors.js` | Example using the raw 80×80 sensor grid via `floor.sensors.data`. |
+| `sensors.ts` | Sensor grid, all source classes (BLSource, RaindropSource, AFRPlaybackSource), filtering, blobbing/tracking. |
 | `floor.ts` | High-level floor state, user tracking, ghost users, and sensor connection logic. |
 | `display.ts` | Fixed display dimensions and sensor-to-pixel conversion helpers. |
 | `main.ts` | App entry point that loads one behavior module at runtime. |
+| `documentation/AFRPlayback-Kiro-Spec.md` | Full specification of the `.afr` recording format and AFRPlaybackSource design. |
 
 ## Behavior contract
 
@@ -77,6 +79,19 @@ When working with tracked users from `floor.users`, `user.x` and `user.y` are al
 | `frameRate: 'sensors'` | Render when sensor updates arrive. |
 | `maxUsers` | Maximum tracked users; `0` means raw sensors only. |
 | `numGhosts` | Adds fake users for testing movement ideas. |
+
+## Sensor sources
+
+The app supports four sensor input modes, selectable via the dropdown in dev mode:
+
+| Source | Description |
+|---|---|
+| Random (`RaindropSource`) | Simulated random noise — always available, good for quick iteration |
+| Server (`BLSource`) | Live BrightLogic floor sensor server at 192.168.72.11:9000 |
+| AFR Recording (`AFRPlaybackSource`) | Plays back a `.afr` recording file with real foot traffic at original timing |
+| Off (`NullSource`) | No sensor input |
+
+All sources implement the same `Source` interface (`read(): Promise<Grid>`), so behaviors work identically regardless of which source is active. The AFR source uses embedded timestamps for playback timing and loops continuously.
 
 ## Development workflow
 
