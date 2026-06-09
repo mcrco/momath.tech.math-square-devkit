@@ -1,5 +1,5 @@
 {
-  "name": "momath-devkit-mathsquare",
+  "name": "momath-tech-math-square-devkit",
   "version": "1.0.0",
   "description": "MoMath Math Square Developer Kit — single behavior Electron app for the interactive floor",
   "type": "module",
@@ -31,7 +31,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/MoMath1/MoMath.DevKit.MathSquare"
+    "url": "https://github.com/MoMath1/momath.tech.math-square-devkit"
   },
   "author": "MoMath",
   "license": "UNLICENSED",

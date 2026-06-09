@@ -1,4 +1,4 @@
-# MoMath.DevKit.MathSquare
+# momath.tech.math-square-devkit
 
 > **© 2025 National Museum of Mathematics. All rights reserved.**
 > This software is proprietary. See [LICENSE](LICENSE) for details.
