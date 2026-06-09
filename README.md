@@ -13,6 +13,21 @@ The Math Square is an 80×80 sensor grid floor that detects people walking on it
 
 - Node.js >= 22
 - npm (comes with Node.js)
+- [Git LFS](https://git-lfs.com/) (required for `.afr` recording files)
+
+### Git LFS
+
+This repository uses Git Large File Storage (LFS) for `.afr` sensor recording files. You **must** have Git LFS installed before cloning, or the recording files will be downloaded as small pointer files instead of the actual data.
+
+```bash
+# Install Git LFS (one-time setup)
+git lfs install
+
+# If you already cloned without LFS, pull the real files:
+git lfs pull
+```
+
+### Install dependencies
 
 ```bash
 npm install
