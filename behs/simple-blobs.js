@@ -1,5 +1,5 @@
 /* MoMath Math Square Behavior
- * © 2025 National Museum of Mathematics. All rights reserved.
+ * © 2026 National Museum of Mathematics. All rights reserved.
  *
  *        Title: Simple Blobs
  *  Description: Minimal example of blobbed user tracking with pure Canvas2D.

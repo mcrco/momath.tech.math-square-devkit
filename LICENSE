@@ -1,12 +1,59 @@
-Copyright (c) 2025 National Museum of Mathematics (MoMath). All rights reserved.
+MoMath Source Available License
 
-This software and associated documentation files (the "Software") are the
-proprietary property of the National Museum of Mathematics. No license,
-express or implied, is granted to any person obtaining a copy of this
-Software to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software.
+Copyright (c) 2026 National Museum of Mathematics (MoMath)
 
-Unauthorized copying, modification, distribution, or use of this Software,
-via any medium, is strictly prohibited.
+DEFINITIONS
 
-For licensing inquiries, contact MoMath.
+"Software" means the source code, documentation, and associated files in
+this repository.
+
+"MoMath" means the National Museum of Mathematics, a 501(c)(3) nonprofit
+organization located in New York, NY.
+
+"MoMath Authorized Use" means any use of the Software undertaken by
+MoMath, or by individuals or organizations acting explicitly on behalf of
+and under written authorization from MoMath (such as employees,
+contractors, or volunteers engaged in MoMath programs or operations).
+
+PERMISSIONS GRANTED TO ALL
+
+Any person or organization is permitted to:
+
+1. View, download, and inspect the source code for educational or
+   review purposes.
+2. Redistribute verbatim (unmodified) copies of the Software, provided
+   this license notice and copyright statement are preserved in full.
+
+PERMISSIONS GRANTED FOR MOMATH AUTHORIZED USE ONLY
+
+The following rights are granted exclusively for MoMath Authorized Use:
+
+1. Run, execute, or deploy the Software in any environment.
+2. Modify, adapt, or create derivative works based on the Software.
+3. Fork the Software and incorporate it into other projects.
+
+Any derivative works created under MoMath Authorized Use:
+
+   a. May only be used for MoMath programs and operations.
+   b. May not be sublicensed, sold, or distributed to third parties
+      except as strictly necessary to operate MoMath programs.
+   c. Must retain this copyright notice and a reference to this license.
+
+ALL OTHER RIGHTS RESERVED
+
+All rights not explicitly granted above are reserved by MoMath.
+
+Without the prior written consent of MoMath, no person or organization
+may:
+
+- Run, execute, or deploy the Software in any environment.
+- Modify, fork, or create derivative works of the Software.
+- Use the Software or any derivative thereof in commercial products
+  or services.
+- Incorporate the Software into another institution's systems,
+  products, or offerings.
+
+DISCLAIMER OF WARRANTY
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT.
+IN NO EVENT SHALL MOMATH BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.

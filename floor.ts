@@ -1,5 +1,5 @@
 /* MoMath Math Square high-level sensor interface
- * © 2025 National Museum of Mathematics. All rights reserved.
+ * © 2026 National Museum of Mathematics. All rights reserved.
  * Provides and manages the state of the floor, including managing the
  * lower-level sensors interface, providing user blobbing, and "fake" user
  * ghosts.

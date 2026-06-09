@@ -1,7 +1,7 @@
 # momath.tech.math-square-devkit
 
-> **© 2025 National Museum of Mathematics. All rights reserved.**
-> This software is proprietary. See [LICENSE](LICENSE) for details.
+> **© 2026 National Museum of Mathematics. All rights reserved.**
+> Licensed under the [MoMath Source Available License](LICENSE).
 
 Developer kit for building behaviors on the MoMath Math Square interactive floor.
 

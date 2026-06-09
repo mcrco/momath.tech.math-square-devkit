@@ -1,5 +1,5 @@
 /* MoMath Math Square low-level sensors
- * © 2025 National Museum of Mathematics. All rights reserved.
+ * © 2026 National Museum of Mathematics. All rights reserved.
  * Describes the sensor space and provides utilites to sample, filter, generate, record, blob, and track sensor readings.
  */
 

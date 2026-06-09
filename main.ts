@@ -1,5 +1,5 @@
 /* MoMath Math Square — Main Entry Point
- * © 2025 National Museum of Mathematics. All rights reserved.
+ * © 2026 National Museum of Mathematics. All rights reserved.
  * Initializes sensors, floor tracking, and the behavior render loop.
  * Self-initializes when loaded as an ESM module (no onload handler needed).
  */
