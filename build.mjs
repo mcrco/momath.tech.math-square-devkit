@@ -31,8 +31,9 @@ const buildOptions = {
     'floor': './floor.ts',
     'prod': './prod.json',
     'lib/noise': './lib/noise.js',
+    'lib/pixels': './lib/pixels.js',
   },
-  external: ['electron', 'electron-log'],
+  external: ['electron', 'electron-log', 'dgram'],
   loader: { '.json': 'json' },
 };
 

@@ -70,6 +70,7 @@ class App {
       movable: true,
       webPreferences: {
         nodeIntegration: true,
+        contextIsolation: false,
         webgl: true,
         backgroundThrottling: false
       }
