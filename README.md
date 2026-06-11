@@ -151,6 +151,15 @@ These two examples represent the two ways a behavior can interact with the floor
 
 Most behaviors will use one or the other. Set `maxUsers: 0` in your behavior to disable blobbing and work with raw sensors only.
 
+### Sensor Filtering
+
+Before your behavior sees any data, the raw sensor input passes through a `FilterSource` that applies exponential smoothing. This removes noise and stabilizes readings:
+
+- **Suppression** — a cell that's been on for a long time (e.g., furniture or a stuck sensor) gets suppressed and stops registering. This prevents permanent "hot spots" from showing up as ghost users.
+- **Activation** — a cell must be active for a brief moment (~2 samples) before it counts as truly active. This filters out single-frame noise spikes.
+
+The filtering stabilizes blob positions indirectly (no flickering cells means steadier centroids), but blob positions themselves are raw centroids — they'll jump if someone shifts position quickly. This might be the behavior you want.  But if you need smooth user movement in your behavior, apply your own interpolation/easing on `user.x`/`user.y` between frames.
+
 ### Switching behaviors
 
 The app loads **one behavior at a time**. The default is `simple-sensors.js` (raw sensor grid visualization). To try a different behavior, edit `main.ts` and change the import path near the bottom of the file:
