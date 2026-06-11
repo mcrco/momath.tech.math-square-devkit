@@ -11,9 +11,22 @@ The Math Square is an 80×80 sensor grid floor that detects people walking on it
 
 ## Prerequisites
 
-- Node.js >= 22
+- Node.js 22 (tested and recommended)
 - npm (comes with Node.js)
 - [Git LFS](https://git-lfs.com/) (required for `.afr` recording files)
+
+### Node.js via nvm (recommended)
+
+This project has been tested with Node.js 22. We recommend using [nvm](https://github.com/nvm-sh/nvm) to manage your Node version:
+
+```bash
+# Install nvm (if not already installed — see https://github.com/nvm-sh/nvm)
+# Then install and use Node 22:
+nvm install 22
+nvm use 22
+```
+
+Newer versions of Node (e.g., 24) may work but are not guaranteed to be compatible with this version of Electron.
 
 ### Git LFS
 
@@ -30,6 +43,29 @@ git lfs pull
 ### Install dependencies
 
 ```bash
+npm install
+```
+
+### Troubleshooting: Electron fails to install
+
+Electron's binary download can fail silently during `npm install`. If you see this error when running `npm run dev`:
+
+```
+Error: Electron failed to install correctly, please delete node_modules/electron and try installing again
+```
+
+Fix it by reinstalling Electron directly:
+
+```bash
+rm -rf node_modules/electron
+npm install electron
+```
+
+If that still doesn't work, do a full clean install with Node 22:
+
+```bash
+nvm use 22
+rm -rf node_modules
 npm install
 ```
 
