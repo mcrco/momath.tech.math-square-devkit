@@ -141,6 +141,16 @@ The project ships with two example behaviors in `behs/`:
 | `simple-blobs.js` | Simple Blobs | Draws each tracked user as a colored circle. Demonstrates high-level blobbed user tracking. |
 | `simple-sensors.js` | Simple Sensors | Renders the raw 80×80 sensor grid directly — green rectangles for active cells. No blobbing. |
 
+### Sensors vs. Blobs
+
+These two examples represent the two ways a behavior can interact with the floor:
+
+- **Sensors (raw grid)** — You get the full 80×80 grid of 0s and 1s. Each cell tells you whether that spot on the floor is being stepped on. This is useful for effects that react to the shape or area of contact (heat maps, ripples, pixel art, etc.).
+
+- **Blobs (tracked users)** — The system groups nearby active sensor cells into "blobs" and tracks them as individual people. Each blob has an `id`, `x`, and `y` position in pixel coordinates (0–1024). This is useful for effects that follow people around (trails, orbiting particles, user-specific interactions, etc.).
+
+Most behaviors will use one or the other. Set `maxUsers: 0` in your behavior to disable blobbing and work with raw sensors only.
+
 ### Switching behaviors
 
 The app loads **one behavior at a time**. The default is `simple-sensors.js` (raw sensor grid visualization). To try a different behavior, edit `main.ts` and change the import path near the bottom of the file:
