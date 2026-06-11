@@ -94,6 +94,8 @@ This launches the app in dev mode with random sensor data. Use the sensor dropdo
 
 Check "mouse" to simulate a person with your mouse cursor.
 
+> **Try both behaviors!** The default shows the raw sensor grid. Edit `main.ts` and change the import from `./behs/simple-sensors.js` to `./behs/simple-blobs.js` to see tracked user blobs instead. See [Switching behaviors](#switching-behaviors) below.
+
 ### AFR Playback
 
 Select "AFR Recording" from the sensor dropdown to load a BrightLogic `.afr` recording file. This replays recorded foot traffic at its original speed using embedded timestamps, and loops continuously. All behaviors work identically to running against the live floor — blobbing, filtering, and display are unaffected.
@@ -141,19 +143,25 @@ The project ships with two example behaviors in `behs/`:
 
 ### Switching behaviors
 
-The app currently loads a single behavior hardcoded in `main.ts`:
+The app loads **one behavior at a time**. The default is `simple-sensors.js` (raw sensor grid visualization). To try a different behavior, edit `main.ts` and change the import path near the bottom of the file:
 
 ```typescript
+// Default — raw sensor grid (green rectangles for active cells):
 const beh = await import('./behs/simple-sensors.js');
-```
 
-To switch, change the import path to a different behavior file:
-
-```typescript
+// Try this instead — tracked user blobs (colored circles following people):
 const beh = await import('./behs/simple-blobs.js');
 ```
 
 Save the file, and esbuild will rebuild automatically (in dev mode). The Electron window reloads with the new behavior.
+
+> **Tip:** Try `simple-blobs.js` to see the user tracking system in action — it draws a colored circle for each detected person on the floor.
+
+When you create your own behavior (e.g., `behs/my-behavior.js`), switch to it the same way:
+
+```typescript
+const beh = await import('./behs/my-behavior.js');
+```
 
 ## Writing a Behavior
 
