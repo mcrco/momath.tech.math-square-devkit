@@ -120,6 +120,7 @@ if (form && DEV) {
   const sensorInput = <HTMLSelectElement | null>form.elements.namedItem('sensors');
   const mouseCheckBox = <HTMLInputElement | null>form.elements.namedItem('mouseCheckBox');
   const afrFileInput = <HTMLInputElement | null>document.getElementById('afrFileInput');
+  const afrProgress = <HTMLSpanElement | null>document.getElementById('afrProgress');
 
   if (sensorInput) {
     sensorInput.value = params.sensors || 'raindrop';
@@ -129,12 +130,37 @@ if (form && DEV) {
     let previousSensorValue: string = sensorInput.value;
     // Track active AFR source so we can stop it when switching away
     let activeAFRSource: Sensor.AFRPlaybackSource | null = null;
+    let afrProgressInterval: ReturnType<typeof setInterval> | null = null;
 
     const stopActiveAFR = () => {
       if (activeAFRSource) {
         activeAFRSource.stop();
         activeAFRSource = null;
       }
+      if (afrProgressInterval) {
+        clearInterval(afrProgressInterval);
+        afrProgressInterval = null;
+      }
+      if (afrProgress) {
+        afrProgress.style.display = 'none';
+        afrProgress.textContent = '';
+      }
+    };
+
+    const startAFRProgress = (source: Sensor.AFRPlaybackSource) => {
+      if (!afrProgress) return;
+      afrProgress.style.display = 'inline';
+      afrProgressInterval = setInterval(() => {
+        if (!source || source.stopped) {
+          if (afrProgress) afrProgress.style.display = 'none';
+          if (afrProgressInterval) clearInterval(afrProgressInterval);
+          return;
+        }
+        const total = source.frameIndex.length;
+        const played = total - source.remaining;
+        const pct = Math.round((played / total) * 100);
+        afrProgress.textContent = `${played}/${total} (${pct}%)`;
+      }, 250);
     };
 
     const updateSource = () => {
@@ -173,6 +199,12 @@ if (form && DEV) {
             floor.source = afrSource;
             activeAFRSource = afrSource;
             previousSensorValue = 'afr';
+
+            // Ensure dropdown shows "Recording"
+            sensorInput.value = 'afr';
+
+            // Start progress indicator
+            startAFRProgress(afrSource);
 
             // Drive playback using embedded timestamps
             Sensor.runAFRPlayback(afrSource, (result) => {
