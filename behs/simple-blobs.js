@@ -17,8 +17,9 @@ function init(container) {
   canvas = document.createElement('canvas');
   canvas.width = Display.width;
   canvas.height = Display.height;
-  canvas.style.width = '100%';
-  canvas.style.height = '100%';
+  canvas.style.position= 'left';
+  //canvas.style.width = '100%';
+  //canvas.style.height = '100%';
   canvas.style.pointerEvents = 'none'; // Let mouse events pass through to scene div
   container.appendChild(canvas);
   ctx = canvas.getContext('2d');
