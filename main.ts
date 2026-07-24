@@ -196,9 +196,17 @@ if (form && DEV) {
 
             const afrSource = new Sensor.AFRPlaybackSource(file);
             await afrSource.init();
-            floor.source = afrSource;
             activeAFRSource = afrSource;
             previousSensorValue = 'afr';
+
+            // Wrap in mouse source if mouse checkbox is checked
+            if (mouseCheckBox && mouseCheckBox.checked) {
+              mouseSource.source = afrSource;
+              mouseSource.start();
+              floor.source = mouseSource;
+            } else {
+              floor.source = afrSource;
+            }
 
             // Ensure dropdown shows "Recording"
             sensorInput.value = 'afr';
@@ -206,13 +214,9 @@ if (form && DEV) {
             // Start progress indicator
             startAFRProgress(afrSource);
 
-            // Drive playback using embedded timestamps
-            Sensor.runAFRPlayback(afrSource, (result) => {
-              if (typeof result === 'string') {
-                floor.errCallback(result);
-              }
-              return 1; // continue playback
-            });
+            // The floor's existing Reader (started by floor.connect()) will poll
+            // the AFR source at 20Hz, advancing through frames automatically.
+            // No need to call runAFRPlayback — the Reader drives playback.
           } catch (err: any) {
             floor.errCallback(String(err));
             // Revert dropdown on error
@@ -255,7 +259,23 @@ if (form && DEV) {
     };
 
     sensorInput.onchange = updateSource;
-    if (mouseCheckBox) mouseCheckBox.onchange = updateSource;
+    if (mouseCheckBox) {
+      mouseCheckBox.onchange = () => {
+        // If AFR is active, just toggle mouse overlay without re-opening file dialog
+        if (activeAFRSource && sensorInput.value === 'afr') {
+          if (mouseCheckBox.checked) {
+            mouseSource.source = activeAFRSource;
+            mouseSource.start();
+            floor.source = mouseSource;
+          } else {
+            mouseSource.stop();
+            floor.source = activeAFRSource;
+          }
+        } else {
+          updateSource();
+        }
+      };
+    }
   }
 }
 
