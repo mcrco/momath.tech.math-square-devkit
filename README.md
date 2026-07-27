@@ -449,7 +449,6 @@ These addresses only work on MoMath's internal network:
 | Service | Address |
 |---|---|
 | Sensor server | `192.168.72.11:9000` |
-| HDMI switcher | `192.168.72.55` |
 | BLAST semaphore | `192.168.72.13:9090` |
 
 For development, use AFR Recording or Random sensor mode — you don't need
