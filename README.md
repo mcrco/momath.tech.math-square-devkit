@@ -6,7 +6,7 @@
 > Build something people will want to step on.
 
 The Math Square is MoMath's signature interactive floor — a 30×30 foot LED canvas
-that sees you. Write a behavior and watch strangers play with your math.
+that senses you. Write a behavior and watch strangers play with your math.
 
 &nbsp;&nbsp;**[📖 Jump to Quick Start](#quick-start)**
 
@@ -14,7 +14,7 @@ that sees you. Write a behavior and watch strangers play with your math.
 
 ## The Floor
 
-The Math Square sits at the entrance of the National Museum of Mathematics in
+The Math Square sits in the main gallery of the National Museum of Mathematics in
 New York City. It runs continuously, seen by hundreds of visitors every day —
 from curious kids who run straight for it to mathematicians who stop and stare.
 
