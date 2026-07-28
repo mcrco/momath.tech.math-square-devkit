@@ -1,6 +1,6 @@
 # Math Square Devkit
 
-![Visitors playing on the Math Square floor at MoMath](docs/images/hero-venus.jpg)
+![Visitors playing on the Math Square floor at MoMath]
 *Guests exploring a live Math Square behavior at the National Museum of Mathematics, NYC.*
 
 > Build something people will want to step on.
