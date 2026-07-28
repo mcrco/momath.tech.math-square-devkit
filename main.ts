@@ -288,7 +288,7 @@ function setupRenderLoop(prog: any) {
 }
 
 try {
-  const beh = await import('./behs/simple-blobs.js');
+  const beh = await import('./behs/latent-walk.js');
   const prog = beh.default || beh.behavior;
   if (!prog) {
     console.error('[main] Invalid behavior module');
