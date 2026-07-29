@@ -20,6 +20,7 @@ let session = null;
 let meta = null;
 let status = 'loading';
 let ghostsActive = false;
+let activeAnchor = null;
 let smoothZ = null;
 let lastZ = null;
 let decodeBusy = false;
@@ -35,6 +36,18 @@ function assetURL(rel) {
   return new URL(rel, window.location.href).href;
 }
 
+function anchorPool() {
+  if (meta.anchors && meta.anchors.length) return meta.anchors;
+  if (meta.anchor) return [meta.anchor];
+  return [meta.mu];
+}
+
+function pickAnchor(randomize) {
+  const pool = anchorPool();
+  const idx = randomize ? ((Math.random() * pool.length) | 0) : 0;
+  activeAnchor = pool[idx];
+}
+
 function syncGhosts(floor, realUsers) {
   if (realUsers.length > 0) {
     if (ghostsActive) {
@@ -44,6 +57,8 @@ function syncGhosts(floor, realUsers) {
     return;
   }
   if (!ghostsActive) {
+    // New attract cycle → fresh sharp cat, then ghosts steer PCs around it.
+    pickAnchor(true);
     const n = Math.random() < 0.5 ? 1 : 2;
     floor.setGhosts(n);
     ghostsActive = true;
@@ -59,10 +74,9 @@ function selectActors(floor) {
 }
 
 function buildLatent(actors) {
-  const dim = meta.latentDim;
-  const z = new Float32Array(dim);
-  const mu = meta.mu;
-  for (let d = 0; d < dim; d++) z[d] = mu[d];
+  if (!activeAnchor) pickAnchor(false);
+  // Offset a real encoding (not the muddy PCA mean) along the walked PCs.
+  const z = Float32Array.from(activeAnchor);
 
   const maxPairs = meta.maxPairs;
   const n = Math.min(actors.length, maxPairs);
@@ -74,7 +88,7 @@ function buildLatent(actors) {
     const b = lerp(meta.pcMax[pc1], meta.pcMin[pc1], u.y / Display.height);
     const v0 = meta.components[pc0];
     const v1 = meta.components[pc1];
-    for (let d = 0; d < dim; d++) {
+    for (let d = 0; d < z.length; d++) {
       z[d] += a * v0[d] + b * v1[d];
     }
   }
@@ -265,9 +279,9 @@ async function init(container) {
     }
 
     status = 'ready';
-    // Seed decode at PCA mean
-    const z0 = Float32Array.from(meta.mu);
-    await decode(z0);
+    // Seed on a real encoding — sharper than the PCA mean face.
+    pickAnchor(false);
+    await decode(Float32Array.from(activeAnchor));
   } catch (err) {
     console.error('[latent-walk] init failed', err);
     status = 'error: ' + (err && err.message ? err.message : String(err));
