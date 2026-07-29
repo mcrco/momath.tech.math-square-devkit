@@ -86,7 +86,7 @@ function copyAssets() {
   // Copy prod.json for reference
   copyFileSync('prod.json', join(DIST, 'prod.json'));
 
-  // MNIST VAE model assets for latent-walk behavior
+  // VAE model assets for latent-walk behavior
   if (existsSync('behs/assets')) {
     cpSync('behs/assets', join(DIST, 'assets'), { recursive: true });
   }

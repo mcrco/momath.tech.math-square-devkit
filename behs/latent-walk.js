@@ -235,8 +235,8 @@ async function init(container) {
   ctx = canvas.getContext('2d');
 
   offscreen = document.createElement('canvas');
-  offscreen.width = 128;
-  offscreen.height = 128;
+  offscreen.width = 256;
+  offscreen.height = 256;
   offCtx = offscreen.getContext('2d');
 
   drawStatus('Loading AFHQ cats VAE…');
