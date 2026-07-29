@@ -1,10 +1,10 @@
 /* MoMath Math Square Behavior
  * © 2026 National Museum of Mathematics. All rights reserved.
  *
- *        Title: Latent Walk (MNIST PCs)
+ *        Title: Latent Walk (AFHQ Cats)
  *  Description: Each person steers the next pair of principal components
- *               in a MNIST VAE latent space. One shared live decode fills
- *               the floor. Attract-mode ghosts morph when the floor is empty.
+ *               in an AFHQ v2 cats VAE latent space. One shared live decode
+ *               fills the floor. Attract-mode ghosts morph when empty.
  *    Framework: Canvas2D + onnxruntime-web
  */
 
@@ -102,6 +102,10 @@ function zChanged(z) {
   return acc > Z_EPS;
 }
 
+function clampByte(v) {
+  return Math.max(0, Math.min(255, (v * 255) | 0));
+}
+
 async function decode(z) {
   const feeds = {
     [meta.inputName]: new ort.Tensor('float32', z, [1, meta.latentDim]),
@@ -110,17 +114,30 @@ async function decode(z) {
   const out = results[meta.outputName];
   const data = out.data;
   const size = meta.imageSize;
+  const channels = meta.channels || 1;
   if (!imageData || imageData.width !== size) {
     imageData = offCtx.createImageData(size, size);
   }
   const px = imageData.data;
-  for (let i = 0; i < size * size; i++) {
-    const v = Math.max(0, Math.min(255, (data[i] * 255) | 0));
-    const o = i * 4;
-    px[o] = v;
-    px[o + 1] = v;
-    px[o + 2] = v;
-    px[o + 3] = 255;
+  const plane = size * size;
+  if (channels === 1) {
+    for (let i = 0; i < plane; i++) {
+      const v = clampByte(data[i]);
+      const o = i * 4;
+      px[o] = v;
+      px[o + 1] = v;
+      px[o + 2] = v;
+      px[o + 3] = 255;
+    }
+  } else {
+    // ONNX NCHW: [1, C, H, W] planar
+    for (let i = 0; i < plane; i++) {
+      const o = i * 4;
+      px[o] = clampByte(data[i]);
+      px[o + 1] = clampByte(data[plane + i]);
+      px[o + 2] = clampByte(data[2 * plane + i]);
+      px[o + 3] = 255;
+    }
   }
   offCtx.putImageData(imageData, 0, 0);
   lastZ = Float32Array.from(z);
@@ -218,24 +235,24 @@ async function init(container) {
   ctx = canvas.getContext('2d');
 
   offscreen = document.createElement('canvas');
-  offscreen.width = 28;
-  offscreen.height = 28;
+  offscreen.width = 128;
+  offscreen.height = 128;
   offCtx = offscreen.getContext('2d');
 
-  drawStatus('Loading MNIST VAE…');
+  drawStatus('Loading AFHQ cats VAE…');
 
   try {
     ort.env.wasm.wasmPaths = assetURL('./ort/');
     ort.env.wasm.numThreads = 1;
 
-    const metaRes = await fetch(assetURL('./assets/mnist-vae/meta.json'));
+    const metaRes = await fetch(assetURL('./assets/afhq-vae/meta.json'));
     if (!metaRes.ok) throw new Error(`meta.json HTTP ${metaRes.status}`);
     meta = await metaRes.json();
 
     offscreen.width = meta.imageSize;
     offscreen.height = meta.imageSize;
 
-    const modelUrl = assetURL('./assets/mnist-vae/decoder.onnx');
+    const modelUrl = assetURL('./assets/afhq-vae/decoder.onnx');
     try {
       session = await ort.InferenceSession.create(modelUrl, {
         executionProviders: ['webgpu', 'wasm'],
@@ -279,7 +296,7 @@ function render(floor) {
 }
 
 export const behavior = {
-  title: 'Latent Walk (MNIST PCs)',
+  title: 'Latent Walk (AFHQ Cats)',
   frameRate: 'animate',
   maxUsers: 8,
   init,
