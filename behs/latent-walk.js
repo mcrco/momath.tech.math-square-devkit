@@ -15,6 +15,11 @@ const teamColors = Display.teamColors;
 const EMA = 0.18;
 const Z_EPS = 1e-5;
 
+// Swap decoder by folder name under behs/assets/ (e.g. 'afhq-vae', 'mnist-vae').
+const MODEL = 'afhq-vae';
+// If true, offset a sharp real encoding (meta.anchors); if false, walk around PCA mean.
+const USE_LATENT_ANCHORING = true;
+
 let canvas, ctx, offscreen, offCtx;
 let session = null;
 let meta = null;
@@ -57,8 +62,8 @@ function syncGhosts(floor, realUsers) {
     return;
   }
   if (!ghostsActive) {
-    // New attract cycle → fresh sharp cat, then ghosts steer PCs around it.
-    pickAnchor(true);
+    // New attract cycle → optional fresh anchor, then ghosts steer PCs around it.
+    if (USE_LATENT_ANCHORING) pickAnchor(true);
     const n = Math.random() < 0.5 ? 1 : 2;
     floor.setGhosts(n);
     ghostsActive = true;
@@ -73,10 +78,17 @@ function selectActors(floor) {
   return floor.users.filter((u) => u.id < 0).slice().sort((a, b) => a.id - b.id);
 }
 
+function baseLatent() {
+  if (USE_LATENT_ANCHORING) {
+    if (!activeAnchor) pickAnchor(false);
+    return Float32Array.from(activeAnchor);
+  }
+  return Float32Array.from(meta.mu);
+}
+
 function buildLatent(actors) {
-  if (!activeAnchor) pickAnchor(false);
-  // Offset a real encoding (not the muddy PCA mean) along the walked PCs.
-  const z = Float32Array.from(activeAnchor);
+  // Offset base (anchor or PCA mean) along the walked PCs.
+  const z = baseLatent();
 
   const maxPairs = meta.maxPairs;
   const n = Math.min(actors.length, maxPairs);
@@ -253,20 +265,21 @@ async function init(container) {
   offscreen.height = 256;
   offCtx = offscreen.getContext('2d');
 
-  drawStatus('Loading AFHQ cats VAE…');
+  drawStatus(`Loading ${MODEL}…`);
 
   try {
     ort.env.wasm.wasmPaths = assetURL('./ort/');
     ort.env.wasm.numThreads = 1;
 
-    const metaRes = await fetch(assetURL('./assets/afhq-vae/meta.json'));
+    const assetRoot = `./assets/${MODEL}`;
+    const metaRes = await fetch(assetURL(`${assetRoot}/meta.json`));
     if (!metaRes.ok) throw new Error(`meta.json HTTP ${metaRes.status}`);
     meta = await metaRes.json();
 
     offscreen.width = meta.imageSize;
     offscreen.height = meta.imageSize;
 
-    const modelUrl = assetURL('./assets/afhq-vae/decoder.onnx');
+    const modelUrl = assetURL(`${assetRoot}/decoder.onnx`);
     try {
       session = await ort.InferenceSession.create(modelUrl, {
         executionProviders: ['webgpu', 'wasm'],
@@ -279,9 +292,8 @@ async function init(container) {
     }
 
     status = 'ready';
-    // Seed on a real encoding — sharper than the PCA mean face.
-    pickAnchor(false);
-    await decode(Float32Array.from(activeAnchor));
+    if (USE_LATENT_ANCHORING) pickAnchor(false);
+    await decode(baseLatent());
   } catch (err) {
     console.error('[latent-walk] init failed', err);
     status = 'error: ' + (err && err.message ? err.message : String(err));
@@ -310,7 +322,7 @@ function render(floor) {
 }
 
 export const behavior = {
-  title: 'Latent Walk (AFHQ Cats)',
+  title: `Latent Walk (${MODEL})`,
   frameRate: 'animate',
   maxUsers: 8,
   init,
