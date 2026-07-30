@@ -3,8 +3,8 @@
  *
  *        Title: Latent Walk (AFHQ Cats)
  *  Description: Each person steers the next pair of principal components
- *               in an AFHQ v2 cats VAE latent space. A mirrored live decode
- *               fills the floor while attract-mode ghosts morph it when empty.
+ *               in an AFHQ v2 cats VAE latent space. One shared live decode
+ *               fills the floor. Attract-mode ghosts morph when empty.
  *    Framework: Canvas2D + onnxruntime-web
  */
 
@@ -14,17 +14,6 @@ import * as ort from 'onnxruntime-web';
 const teamColors = Display.teamColors;
 const EMA = 0.18;
 const Z_EPS = 1e-5;
-// The finetuned decoder has a persistent artifact in the viewer-right eye.
-// Mirroring its clean half makes bilateral symmetry part of the visual language
-// of the exhibit and removes the fixed defect without hiding latent motion.
-const MIRROR_FROM_LEFT = true;
-// The PCA export stores generous ±4σ/±3σ bounds. Those become unsafe when
-// added to a real anchor, so keep final component scores near the data manifold.
-const SAFE_PC_FRACTION = 0.55;
-const MAX_WALK_RADIUS_SIGMA = 3.2;
-// Headless sweeps across all 16 PCs found these five anchors remain stable
-// under crowd motion; the others can develop bright eye/ear flares.
-const CURATED_ANCHOR_INDICES = [0, 2, 3, 5, 7];
 
 // Swap decoder by folder name under behs/assets/ (e.g. 'afhq-vae', 'mnist-vae').
 const MODEL = 'afhq-vae';
@@ -37,13 +26,15 @@ let meta = null;
 let status = 'loading';
 let ghostsActive = false;
 let activeAnchor = null;
-let activeAnchorIndex = -1;
-let activeAnchorScores = null;
 let smoothZ = null;
 let lastZ = null;
 let decodeBusy = false;
 let pendingZ = null;
 let imageData = null;
+
+function lerp(a, b, t) {
+  return a + (b - a) * t;
+}
 
 function assetURL(rel) {
   // Behaviors run from dist/; assets are copied to dist/assets/
@@ -51,34 +42,15 @@ function assetURL(rel) {
 }
 
 function anchorPool() {
-  if (meta.anchors && meta.anchors.length) {
-    const curated = CURATED_ANCHOR_INDICES
-      .filter((index) => index < meta.anchors.length)
-      .map((index) => meta.anchors[index]);
-    if (curated.length) return curated;
-    return meta.anchors;
-  }
+  if (meta.anchors && meta.anchors.length) return meta.anchors;
   if (meta.anchor) return [meta.anchor];
   return [meta.mu];
 }
 
 function pickAnchor(randomize) {
   const pool = anchorPool();
-  let idx = 0;
-  if (randomize && pool.length > 1) {
-    // Do not begin two attract cycles with the same cat.
-    idx = (Math.random() * (pool.length - 1)) | 0;
-    if (idx >= activeAnchorIndex) idx++;
-  }
-  activeAnchorIndex = idx;
+  const idx = randomize ? ((Math.random() * pool.length) | 0) : 0;
   activeAnchor = pool[idx];
-  activeAnchorScores = meta.components.map((component) => {
-    let score = 0;
-    for (let d = 0; d < component.length; d++) {
-      score += (activeAnchor[d] - meta.mu[d]) * component[d];
-    }
-    return score;
-  });
 }
 
 function syncGhosts(floor, realUsers) {
@@ -115,46 +87,22 @@ function baseLatent() {
 }
 
 function buildLatent(actors) {
-  // Offset base (anchor or PCA mean) along the walked PCs. Component travel is
-  // anchor-aware: center floor is the sharp real encoding, and walking toward
-  // an edge uses only the room remaining inside a conservative global bound.
+  // Offset base (anchor or PCA mean) along the walked PCs.
   const z = baseLatent();
+
   const maxPairs = meta.maxPairs;
   const n = Math.min(actors.length, maxPairs);
-  const deltas = new Float32Array(meta.nComponents);
   for (let i = 0; i < n; i++) {
     const u = actors[i];
     const pc0 = 2 * i;
     const pc1 = pc0 + 1;
-    const x = Math.max(-1, Math.min(1, 2 * u.x / Display.width - 1));
-    const y = Math.max(-1, Math.min(1, 1 - 2 * u.y / Display.height));
-    for (const [pc, axis] of [[pc0, x], [pc1, y]]) {
-      const center = USE_LATENT_ANCHORING ? activeAnchorScores[pc] : 0;
-      const low = meta.pcMin[pc] * SAFE_PC_FRACTION;
-      const high = meta.pcMax[pc] * SAFE_PC_FRACTION;
-      deltas[pc] = axis < 0
-        ? axis * Math.max(0, center - low)
-        : axis * Math.max(0, high - center);
+    const a = lerp(meta.pcMin[pc0], meta.pcMax[pc0], u.x / Display.width);
+    const b = lerp(meta.pcMax[pc1], meta.pcMin[pc1], u.y / Display.height);
+    const v0 = meta.components[pc0];
+    const v1 = meta.components[pc1];
+    for (let d = 0; d < z.length; d++) {
+      z[d] += a * v0[d] + b * v1[d];
     }
-  }
-
-  // A crowd can otherwise put every independently safe PC at its extreme at
-  // once. Cap the combined standardized displacement while preserving direction.
-  let radiusSq = 0;
-  for (let pc = 0; pc < deltas.length; pc++) {
-    const exportedRadius = 0.5 * (meta.pcMax[pc] - meta.pcMin[pc]);
-    const sigmaScale = meta.pcSigmaScale ? meta.pcSigmaScale[pc] : 3;
-    const sigma = exportedRadius / sigmaScale;
-    if (sigma > 0) radiusSq += (deltas[pc] / sigma) ** 2;
-  }
-  const radius = Math.sqrt(radiusSq);
-  const scale = radius > MAX_WALK_RADIUS_SIGMA
-    ? MAX_WALK_RADIUS_SIGMA / radius
-    : 1;
-  for (let pc = 0; pc < deltas.length; pc++) {
-    const component = meta.components[pc];
-    const amount = deltas[pc] * scale;
-    for (let d = 0; d < z.length; d++) z[d] += amount * component[d];
   }
   return z;
 }
@@ -209,17 +157,12 @@ async function decode(z) {
     }
   } else {
     // ONNX NCHW: [1, C, H, W] planar
-    for (let y = 0; y < size; y++) {
-      for (let x = 0; x < size; x++) {
-        const i = y * size + x;
-        const sourceX = MIRROR_FROM_LEFT && x >= size / 2 ? size - 1 - x : x;
-        const source = y * size + sourceX;
-        const o = i * 4;
-        px[o] = clampByte(data[source]);
-        px[o + 1] = clampByte(data[plane + source]);
-        px[o + 2] = clampByte(data[2 * plane + source]);
-        px[o + 3] = 255;
-      }
+    for (let i = 0; i < plane; i++) {
+      const o = i * 4;
+      px[o] = clampByte(data[i]);
+      px[o + 1] = clampByte(data[plane + i]);
+      px[o + 2] = clampByte(data[2 * plane + i]);
+      px[o + 3] = 255;
     }
   }
   offCtx.putImageData(imageData, 0, 0);
@@ -326,10 +269,7 @@ async function init(container) {
 
   try {
     ort.env.wasm.wasmPaths = assetURL('./ort/');
-    ort.env.wasm.numThreads = globalThis.crossOriginIsolated
-      ? Math.min(4, navigator.hardwareConcurrency || 1)
-      : 1;
-    ort.env.webgpu.powerPreference = 'high-performance';
+    ort.env.wasm.numThreads = 1;
 
     const assetRoot = `./assets/${MODEL}`;
     const metaRes = await fetch(assetURL(`${assetRoot}/meta.json`));
@@ -342,7 +282,7 @@ async function init(container) {
     const modelUrl = assetURL(`${assetRoot}/decoder.onnx`);
     try {
       session = await ort.InferenceSession.create(modelUrl, {
-        executionProviders: [{ name: 'webgpu', preferredLayout: 'NCHW' }, 'wasm'],
+        executionProviders: ['webgpu', 'wasm'],
       });
     } catch (err) {
       console.warn('[latent-walk] webgpu unavailable, using wasm', err);
