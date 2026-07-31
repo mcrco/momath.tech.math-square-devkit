@@ -131,6 +131,12 @@ all of these:
 - [ ] **Production quality** — performant, stable, runs unattended for hours.
       No memory leaks. No crashes. Looks good on a 30-foot floor.
 
+```
+- start at any point
+- no explaination "shouldn't need any explaination to play and enjoy"
+
+```
+
 Venus and Voronoi both clear every one of these. That's why they're in
 the rotation.
 
