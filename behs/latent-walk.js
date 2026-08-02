@@ -16,7 +16,7 @@ const EMA = 0.18;
 const Z_EPS = 1e-5;
 
 // Swap decoder by folder name under behs/assets/ (e.g. 'afhq-vae', 'afhq-vae-gan', 'mnist-vae').
-const MODEL = 'afhq-vae-gan';
+const MODEL = 'afhq-vae';
 // If true, offset a sharp real encoding (meta.anchors); if false, walk around PCA mean.
 const USE_LATENT_ANCHORING = true;
 
